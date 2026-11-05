@@ -284,6 +284,8 @@ def send_eitaa(token: str, chat_id: str, text: str) -> None:
 
 
 def send_telegram(token: str, chat_id: str, text: str) -> None:
+    if not chat_id.lstrip("-").isdigit() and not chat_id.startswith("@"):
+        chat_id = "@" + chat_id  # آیدی بدون @ هم قبول شود
     r = HTTP.post(f"https://api.telegram.org/bot{token}/sendMessage",
                   json={"chat_id": chat_id, "text": text}, timeout=TIMEOUT)
     j = r.json()
