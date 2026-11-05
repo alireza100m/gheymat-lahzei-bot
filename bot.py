@@ -300,6 +300,22 @@ def bubble_lines(data: dict, items: list[str]) -> list[str]:
     return out
 
 
+# نشانگر متن درشت؛ هنگام ارسال برای هر پیام‌رسان به قالب خودش تبدیل می‌شود
+B0, B1 = "\x01", "\x02"
+
+
+def render(text: str, style: str) -> str:
+    if style == "html":
+        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return text.replace(B0, "<b>").replace(B1, "</b>")
+    if style == "md1":
+        text = text.replace("_", "\\_").replace("*", "\\*")
+        return text.replace(B0, "*").replace(B1, "*")
+    if style == "md2":
+        return text.replace(B0, "**").replace(B1, "**")
+    return text.replace(B0, "").replace(B1, "")
+
+
 def build_post(items: list[str], data: dict, header: str, footer: str) -> str | None:
     sections: dict = {g: [] for g, _ in GROUPS}
     for it in items:
@@ -316,10 +332,10 @@ def build_post(items: list[str], data: dict, header: str, footer: str) -> str | 
     if env("SHOW_BUBBLE", "1") != "0":
         sections["bubble"] = bubble_lines(data, items)
 
-    lines = [header, f"🗓 {persian_now()}"]
+    lines = [B0 + header + B1, f"🗓 {persian_now()}"]
     for g, title in GROUPS:
         if sections[g]:
-            lines += ["", title, *sections[g]]
+            lines += ["", B0 + title + B1, *sections[g]]
     if footer:
         lines += ["", footer]
     return "\n".join(lines)
@@ -329,7 +345,8 @@ def build_post(items: list[str], data: dict, header: str, footer: str) -> str | 
 
 def send_bale(token: str, chat_id: str, text: str) -> None:
     r = HTTP.post(f"https://tapi.bale.ai/bot{token}/sendMessage",
-                  json={"chat_id": chat_id, "text": text}, timeout=TIMEOUT)
+                  json={"chat_id": chat_id, "text": render(text, "md1"),
+                        "parse_mode": "Markdown"}, timeout=TIMEOUT)
     j = r.json()
     if not j.get("ok"):
         raise RuntimeError(f"Bale: {j}")
@@ -337,7 +354,7 @@ def send_bale(token: str, chat_id: str, text: str) -> None:
 
 def send_eitaa(token: str, chat_id: str, text: str) -> None:
     r = HTTP.post(f"https://eitaayar.ir/api/{token}/sendMessage",
-                  data={"chat_id": chat_id, "text": text}, timeout=TIMEOUT)
+                  data={"chat_id": chat_id, "text": render(text, "md2")}, timeout=TIMEOUT)
     j = r.json()
     if not j.get("ok"):
         raise RuntimeError(f"Eitaa: {j}")
@@ -347,7 +364,8 @@ def send_telegram(token: str, chat_id: str, text: str) -> None:
     if not chat_id.lstrip("-").isdigit() and not chat_id.startswith("@"):
         chat_id = "@" + chat_id  # آیدی بدون @ هم قبول شود
     r = HTTP.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                  json={"chat_id": chat_id, "text": text}, timeout=TIMEOUT)
+                  json={"chat_id": chat_id, "text": render(text, "html"),
+                        "parse_mode": "HTML"}, timeout=TIMEOUT)
     j = r.json()
     if not j.get("ok"):
         raise RuntimeError(f"Telegram: {j}")
@@ -393,7 +411,7 @@ def run_once(dry: bool) -> None:
         log.error("هیچ قیمتی دریافت نشد؛ پستی ارسال نشد.")
         return
     if dry:
-        print(text)
+        print(render(text, "plain"))
     else:
         publish(text)
 
