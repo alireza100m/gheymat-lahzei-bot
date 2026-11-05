@@ -1,0 +1,37 @@
+name: Post prices
+
+on:
+  schedule:
+    # هر ۱۰ دقیقه (حداقل مجاز گیت‌هاب ۵ دقیقه است). زمان‌ها به UTC هستند.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # دکمه‌ی Run workflow برای تست دستی
+
+concurrency:
+  group: post-prices
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Post to channels
+        env:
+          BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
+          BALE_CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
+          EITAA_TOKEN: ${{ secrets.EITAA_TOKEN }}
+          EITAA_CHAT_ID: ${{ secrets.EITAA_CHAT_ID }}
+          # تنظیمات اختیاری از تب Variables مخزن
+          ITEMS: ${{ vars.ITEMS }}
+          HEADER: ${{ vars.HEADER }}
+          FOOTER: ${{ vars.FOOTER }}
+          QUIET_HOURS: ${{ vars.QUIET_HOURS }}
+          # سرورهای گیت‌هاب خارج از ایران‌اند و نوبیتکس به آن‌ها جواب نمی‌دهد
+          DISABLED_SOURCES: nobitex
+        run: python bot.py --once
