@@ -10,7 +10,7 @@ on:
         description: "post = ارسال پست، bale-chats = پیدا کردن شناسه‌ی کانال بله، check = بررسی منابع"
         default: post
         type: choice
-        options: [post, bale-chats, check]
+        options: [post, bale-chats, check, probe]
 
 concurrency:
   group: post-prices
@@ -47,5 +47,11 @@ jobs:
           case "${{ inputs.mode || 'post' }}" in
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
+            probe)      for u in \
+                          "https://fund.fipiran.ir/api/v1/fund/fundcompare" \
+                          "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&paperTypes[0]=1&paperTypes[1]=2&paperTypes[2]=3&paperTypes[3]=4&paperTypes[4]=5&paperTypes[5]=6&paperTypes[6]=7&paperTypes[7]=8&paperTypes[8]=9&showTraded=false&withBestLimits=false" \
+                          "https://old.tsetmc.com/tsev2/data/MarketWatchPlus.aspx" \
+                          "https://www.tgju.org/profile/ime_fund_ayar" ; do
+                          echo "== $u"; curl -sS -m 20 -A "Mozilla/5.0" "$u" | head -c 1500; echo; done ;;
             *)          python bot.py --once ;;
           esac
