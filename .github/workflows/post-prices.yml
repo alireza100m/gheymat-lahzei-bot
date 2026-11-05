@@ -48,11 +48,9 @@ jobs:
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
             probe)      for u in \
-                          "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&paperTypes[0]=1&showTraded=false&withBestLimits=false" \
-                          "https://cdn.tsetmc.com/api/Fund/GetETFByInsCode/46700660505281786" \
                           "https://www.tgju.org/profile/ime_fund_ayar" \
                           "https://www.tgju.org/gold-funds" \
                           "https://www.tgju.org/ime-funds" ; do
-                          echo "== $u"; curl -gsS -m 20 -A "Mozilla/5.0" "$u" -o /tmp/o; echo "size $(wc -c </tmp/o)"; head -c 600 /tmp/o | tr '\n' ' '; echo; grep -oE ".{0,120}(NAV|ناو|حباب|ارزش خالص).{0,160}" /tmp/o | head -8; done ;;
+                          echo "== $u"; curl -gsS -m 20 -A "Mozilla/5.0" "$u" -o /tmp/o || true; echo "size $(wc -c </tmp/o)"; head -c 600 /tmp/o | tr '\n' ' '; echo; grep -oE ".{0,120}(NAV|ناو|حباب|ارزش خالص).{0,160}" /tmp/o | head -8; done ;;
             *)          python bot.py --once ;;
           esac
