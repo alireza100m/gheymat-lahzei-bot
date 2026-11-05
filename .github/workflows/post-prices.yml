@@ -48,10 +48,11 @@ jobs:
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
             probe)      for u in \
-                          "https://fund.fipiran.ir/api/v1/fund/fundcompare" \
-                          "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&paperTypes[0]=1&paperTypes[1]=2&paperTypes[2]=3&paperTypes[3]=4&paperTypes[4]=5&paperTypes[5]=6&paperTypes[6]=7&paperTypes[7]=8&paperTypes[8]=9&showTraded=false&withBestLimits=false" \
-                          "https://old.tsetmc.com/tsev2/data/MarketWatchPlus.aspx" \
-                          "https://www.tgju.org/profile/ime_fund_ayar" ; do
-                          echo "== $u"; curl -sS -m 20 -A "Mozilla/5.0" "$u" | head -c 1500; echo; done ;;
+                          "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&paperTypes[0]=1&showTraded=false&withBestLimits=false" \
+                          "https://cdn.tsetmc.com/api/Fund/GetETFByInsCode/46700660505281786" \
+                          "https://www.tgju.org/profile/ime_fund_ayar" \
+                          "https://www.tgju.org/gold-funds" \
+                          "https://www.tgju.org/ime-funds" ; do
+                          echo "== $u"; curl -gsS -m 20 -A "Mozilla/5.0" "$u" -o /tmp/o; echo "size $(wc -c </tmp/o)"; head -c 600 /tmp/o | tr '\n' ' '; echo; grep -oE ".{0,120}(NAV|ناو|حباب|ارزش خالص).{0,160}" /tmp/o | head -8; done ;;
             *)          python bot.py --once ;;
           esac
