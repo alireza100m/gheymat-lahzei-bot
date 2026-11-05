@@ -50,9 +50,11 @@ jobs:
             probe)      curl -gsS -m 30 -A "Mozilla/5.0" "https://www.tgju.org/gold-funds" -o /tmp/o || true
                         python3 -c "
           import re; h=open('/tmp/o',encoding='utf-8').read()
-          i=h.find('data-sort=\"ارزش ریالی خالص دارایی'); print(h[i-3000:i+500])
-          rows=re.findall(r'<tr[^>]*>.*?</tr>', h[i:], re.S)
-          for r in rows[:4]: print('ROW', re.sub(r'\s+',' ',r)[:2500])
-          print('NROWS', len(rows))" ;;
+          i=h.find('data-sort=\"ارزش ریالی خالص دارایی')
+          t0=h.rfind('<table',0,i); t1=h.find('</table>',i); t=h[t0:t1]
+          clean=lambda x: re.sub(r'\s+',' ',re.sub(r'<style.*?</style>|<[^>]+>',' ',x,flags=re.S)).strip()
+          print('HEAD', [clean(x) for x in re.findall(r'<th[^>]*>(.*?)</th>', t.split('</thead>')[0], re.S)])
+          for r in re.findall(r'<tr[^>]*>(.*?)</tr>', t.split('</thead>')[-1], re.S)[:30]:
+              print('ROW', [clean(c) for c in re.findall(r'<t[hd][^>]*>(.*?)</t[hd]>', r, re.S)])" ;;
             *)          python bot.py --once ;;
           esac
