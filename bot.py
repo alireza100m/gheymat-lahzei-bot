@@ -355,6 +355,20 @@ def main() -> None:
     ap.add_argument("--bale-chats", action="store_true",
                     help="نمایش شناسه‌ی عددی کانال‌ها/گروه‌هایی که ربات بله در آن‌هاست")
     a = ap.parse_args()
+    if a.bale_chats and env("TELEGRAM_TOKEN"):
+        tg = f"https://api.telegram.org/bot{env('TELEGRAM_TOKEN')}"
+        me = HTTP.get(f"{tg}/getMe", timeout=TIMEOUT).json()
+        print("TG getMe:", me.get("ok"), me.get("result", {}).get("username"), me.get("description"))
+        cid = env("TELEGRAM_CHAT_ID")
+        print("TG chat_id len:", len(cid), "starts@:", cid.startswith("@"),
+              "has_space:", cid != cid.strip() or " " in cid)
+        print("TG getChat:", HTTP.post(f"{tg}/getChat", json={"chat_id": cid},
+                                       timeout=TIMEOUT).json())
+        for u in HTTP.get(f"{tg}/getUpdates", timeout=TIMEOUT).json().get("result", []):
+            for k in ("channel_post", "my_chat_member", "message"):
+                chat = (u.get(k) or {}).get("chat")
+                if chat:
+                    print("TG CHAT", chat["id"], chat.get("type"), chat.get("username"))
     if a.bale_chats:
         r = HTTP.get(f"https://tapi.bale.ai/bot{env('BALE_TOKEN')}/getUpdates", timeout=TIMEOUT)
         j = r.json()
