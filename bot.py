@@ -283,10 +283,19 @@ def send_eitaa(token: str, chat_id: str, text: str) -> None:
         raise RuntimeError(f"Eitaa: {j}")
 
 
+def send_telegram(token: str, chat_id: str, text: str) -> None:
+    r = HTTP.post(f"https://api.telegram.org/bot{token}/sendMessage",
+                  json={"chat_id": chat_id, "text": text}, timeout=TIMEOUT)
+    j = r.json()
+    if not j.get("ok"):
+        raise RuntimeError(f"Telegram: {j}")
+
+
 def publish(text: str) -> None:
     targets = [
         ("بله", send_bale, env("BALE_TOKEN"), env("BALE_CHAT_ID")),
         ("ایتا", send_eitaa, env("EITAA_TOKEN"), env("EITAA_CHAT_ID")),
+        ("تلگرام", send_telegram, env("TELEGRAM_TOKEN"), env("TELEGRAM_CHAT_ID")),
     ]
     for name, fn, token, chat in targets:
         if not (token and chat):
@@ -369,7 +378,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     if not a.dry_run and not ((env("BALE_TOKEN") and env("BALE_CHAT_ID"))
-                              or (env("EITAA_TOKEN") and env("EITAA_CHAT_ID"))):
+                              or (env("EITAA_TOKEN") and env("EITAA_CHAT_ID"))
+                              or (env("TELEGRAM_TOKEN") and env("TELEGRAM_CHAT_ID"))):
         sys.exit("هیچ کانالی تنظیم نشده. فایل .env را از روی .env.example بسازید.")
 
     if a.once or a.dry_run:
