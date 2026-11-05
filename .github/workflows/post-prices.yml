@@ -4,7 +4,13 @@ on:
   schedule:
     # هر ۱۰ دقیقه (حداقل مجاز گیت‌هاب ۵ دقیقه است). زمان‌ها به UTC هستند.
     - cron: "*/10 * * * *"
-  workflow_dispatch: {}   # دکمه‌ی Run workflow برای تست دستی
+  workflow_dispatch:      # دکمه‌ی Run workflow برای تست دستی
+    inputs:
+      mode:
+        description: "post = ارسال پست، bale-chats = پیدا کردن شناسه‌ی کانال بله، check = بررسی منابع"
+        default: post
+        type: choice
+        options: [post, bale-chats, check]
 
 concurrency:
   group: post-prices
@@ -34,4 +40,9 @@ jobs:
           QUIET_HOURS: ${{ vars.QUIET_HOURS }}
           # سرورهای گیت‌هاب خارج از ایران‌اند و نوبیتکس به آن‌ها جواب نمی‌دهد
           DISABLED_SOURCES: nobitex
-        run: python bot.py --once
+        run: |
+          case "${{ inputs.mode || 'post' }}" in
+            bale-chats) python bot.py --bale-chats ;;
+            check)      python bot.py --check ;;
+            *)          python bot.py --once ;;
+          esac

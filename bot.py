@@ -337,7 +337,27 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="فقط نمایش متن، بدون ارسال")
     ap.add_argument("--check", action="store_true",
                     help="نمایش همه‌ی کلیدهای دریافتی از منابع برای عیب‌یابی")
+    ap.add_argument("--bale-chats", action="store_true",
+                    help="نمایش شناسه‌ی عددی کانال‌ها/گروه‌هایی که ربات بله در آن‌هاست")
     a = ap.parse_args()
+    if a.bale_chats:
+        r = HTTP.get(f"https://tapi.bale.ai/bot{env('BALE_TOKEN')}/getUpdates", timeout=TIMEOUT)
+        j = r.json()
+        print("getMe:", HTTP.get(f"https://tapi.bale.ai/bot{env('BALE_TOKEN')}/getMe",
+                                 timeout=TIMEOUT).json().get("result", {}).get("username"))
+        seen = set()
+        for u in j.get("result", []):
+            for k in ("channel_post", "message", "my_chat_member", "edited_channel_post"):
+                chat = (u.get(k) or {}).get("chat")
+                if chat and chat["id"] not in seen:
+                    seen.add(chat["id"])
+                    print("CHAT", chat["id"], chat.get("type"), chat.get("username"))
+        if not seen:
+            print("هیچ چتی پیدا نشد:", str(j)[:300])
+        for cid in filter(None, [env("BALE_CHAT_ID")]):
+            print("getChat", HTTP.post(f"https://tapi.bale.ai/bot{env('BALE_TOKEN')}/getChat",
+                                       json={"chat_id": cid}, timeout=TIMEOUT).json())
+        return
     if a.check:
         for name, fn in SOURCES.items():
             try:
