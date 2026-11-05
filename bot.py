@@ -196,11 +196,11 @@ R2T = 0.1  # ریال به تومان
 
 # گروه‌های پست به ترتیب نمایش: (کلید، سرتیتر)
 GROUPS = [
-    ("fx",     "💵 ارز  ·  تومان"),
-    ("gold",   "🟡 طلا و سکه  ·  تومان"),
+    ("fx",     "💵 ارز - تومان"),
+    ("gold",   "🟡 طلا و سکه - تومان"),
     ("bubble", "🫧 حباب"),
-    ("world",  "🌍 بازار جهانی  ·  دلار"),
-    ("crypto", "🪙 رمزارز  ·  دلار"),
+    ("world",  "🌍 بازار جهانی - دلار"),
+    ("crypto", "🪙 رمزارز - دلار"),
 ]
 
 CATALOG = {
@@ -354,7 +354,7 @@ def send_bale(token: str, chat_id: str, text: str) -> None:
 
 def send_eitaa(token: str, chat_id: str, text: str) -> None:
     r = HTTP.post(f"https://eitaayar.ir/api/{token}/sendMessage",
-                  data={"chat_id": chat_id, "text": render(text, "md2")}, timeout=TIMEOUT)
+                  data={"chat_id": chat_id, "text": render(text, "plain")}, timeout=TIMEOUT)
     j = r.json()
     if not j.get("ok"):
         raise RuntimeError(f"Eitaa: {j}")
