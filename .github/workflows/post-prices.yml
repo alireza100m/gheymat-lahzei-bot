@@ -39,6 +39,7 @@ jobs:
           ITEMS: ${{ vars.ITEMS }}
           HEADER: ${{ vars.HEADER }}
           FOOTER: ${{ vars.FOOTER }}
+          TELEGRAM_FOOTER: ${{ vars.TELEGRAM_FOOTER }}
           QUIET_HOURS: ${{ vars.QUIET_HOURS }}
           # سرورهای گیت‌هاب خارج از ایران‌اند و نوبیتکس به آن‌ها جواب نمی‌دهد
           DISABLED_SOURCES: nobitex

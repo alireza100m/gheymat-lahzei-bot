@@ -292,17 +292,23 @@ def send_telegram(token: str, chat_id: str, text: str) -> None:
 
 
 def publish(text: str) -> None:
+    # پانویس تلگرام جداست، چون آیدی کانال تلگرام با بقیه فرق دارد
+    default_footer = env("FOOTER", "🆔 @gheymat_lahzei")
+    tg_footer = env("TELEGRAM_FOOTER", "🆔 @gheymat_lahzei_ir")
+    tg_text = (text[: -len(default_footer)] + tg_footer
+               if default_footer and text.endswith(default_footer) else text)
     targets = [
         ("بله", send_bale, env("BALE_TOKEN"), env("BALE_CHAT_ID")),
         ("ایتا", send_eitaa, env("EITAA_TOKEN"), env("EITAA_CHAT_ID")),
         ("تلگرام", send_telegram, env("TELEGRAM_TOKEN"), env("TELEGRAM_CHAT_ID")),
     ]
     for name, fn, token, chat in targets:
+        msg = tg_text if fn is send_telegram else text
         if not (token and chat):
             continue
         for attempt in range(3):
             try:
-                fn(token, chat, text)
+                fn(token, chat, msg)
                 log.info("ارسال به %s انجام شد", name)
                 break
             except Exception as e:
