@@ -188,36 +188,56 @@ SOURCES = {
 }
 
 # ───────────────────────── اقلام پست ─────────────────────────
-# هر قلم: عنوان، ایموجی، واحد، تعداد اعشار، ضریب (مثلاً ریال→تومان = 0.1)،
+# هر قلم: عنوان، گروه، تعداد اعشار، ضریب (ریال→تومان = 0.1)،
 # و فهرست منابع به ترتیب اولویت. اولین منبعی که جواب بدهد استفاده می‌شود.
 # برای حذف یک قلم کافی است کلیدش را از ITEMS در .env بردارید.
 
 R2T = 0.1  # ریال به تومان
 
+# گروه‌های پست به ترتیب نمایش: (کلید، سرتیتر)
+GROUPS = [
+    ("fx",     "💵 ارز  ·  تومان"),
+    ("gold",   "🟡 طلا و سکه  ·  تومان"),
+    ("bubble", "🫧 حباب"),
+    ("world",  "🌍 بازار جهانی  ·  دلار"),
+    ("crypto", "🪙 رمزارز  ·  دلار"),
+]
+
 CATALOG = {
-    "usd":       dict(title="دلار آزاد", emoji="💵", unit="تومان", dec=0, mul=R2T,
+    "usd":       dict(title="دلار آزاد", group="fx", dec=0, mul=R2T,
                       src=["tgju:price_dollar_rl"]),
-    "usdt":      dict(title="تتر", emoji="💲", unit="تومان", dec=0, mul=R2T,
+    "usdt":      dict(title="تتر", group="fx", dec=0, mul=R2T,
                       src=["nobitex:usdt-rls", "tgju:crypto-tether-irr"]),
-    "gold18":    dict(title="طلای ۱۸ عیار (گرم)", emoji="🟡", unit="تومان", dec=0, mul=R2T,
+    "gold18":    dict(title="طلای ۱۸ عیار (گرم)", group="gold", dec=0, mul=R2T,
                       src=["tgju:geram18"]),
-    "coin":      dict(title="سکه امامی", emoji="🪙", unit="تومان", dec=0, mul=R2T,
+    "coin":      dict(title="سکه امامی", group="gold", dec=0, mul=R2T,
                       src=["tgju:sekee"]),
-    "gold_oz":   dict(title="انس طلا", emoji="🥇", unit="دلار", dec=2, mul=1,
-                      src=["tgju:ons", "goldapi:XAU"]),
-    "silver_oz": dict(title="انس نقره", emoji="🥈", unit="دلار", dec=2, mul=1,
-                      src=["tgju:silver", "goldapi:XAG"]),
-    "silver":    dict(title="نقره ۹۹۹ (گرم)", emoji="⚪️", unit="تومان", dec=0, mul=R2T,
+    "quarter":   dict(title="ربع سکه", group="gold", dec=0, mul=R2T,
+                      src=["tgju:rob"]),
+    "silver":    dict(title="نقره ۹۹۹ (گرم)", group="gold", dec=0, mul=R2T,
                       src=["tgju:silver_999"]),
-    "oil":       dict(title="نفت برنت", emoji="🛢", unit="دلار", dec=2, mul=1,
+    "gold_oz":   dict(title="انس طلا", group="world", dec=2, mul=1,
+                      src=["tgju:ons", "goldapi:XAU"]),
+    "silver_oz": dict(title="انس نقره", group="world", dec=2, mul=1,
+                      src=["tgju:silver", "goldapi:XAG"]),
+    "oil":       dict(title="نفت برنت", group="world", dec=2, mul=1,
                       src=["tgju:oil_brent", "tgju:oil"]),
-    "btc":       dict(title="بیت‌کوین", emoji="₿", unit="دلار", dec=0, mul=1,
+    "btc":       dict(title="بیت‌کوین", group="crypto", dec=0, mul=1,
                       src=["nobitex:btc-usdt", "coingecko:bitcoin", "tgju:crypto-bitcoin"]),
-    "eth":       dict(title="اتریوم", emoji="💎", unit="دلار", dec=0, mul=1,
+    "eth":       dict(title="اتریوم", group="crypto", dec=0, mul=1,
                       src=["nobitex:eth-usdt", "coingecko:ethereum", "tgju:crypto-ethereum"]),
 }
 
-DEFAULT_ITEMS = "usd,usdt,gold18,coin,gold_oz,silver_oz,silver,oil,btc,eth"
+DEFAULT_ITEMS = "usd,usdt,gold18,coin,quarter,silver,gold_oz,silver_oz,oil,btc,eth"
+
+# حباب = قیمت بازار منهای ارزش ذاتی طلای آن (انس جهانی × دلار آزاد).
+# مقدار: گرم طلای خالص در هر واحد.
+OUNCE_G = 31.1035
+BUBBLE = [
+    ("coin",    "سکه امامی", 8.133 * 0.9),
+    ("quarter", "ربع سکه",   2.033 * 0.9),
+    ("gold18",  "طلای ۱۸ عیار", 0.75),
+]
 
 
 def collect_prices(items: list[str]) -> dict:
@@ -242,24 +262,64 @@ def change_badge(pct: float | None) -> str:
     if pct is None or abs(pct) < 0.005:
         return ""
     arrow = "🔺" if pct > 0 else "🔻"
-    return f" {arrow}{fa(f'{abs(pct):.2f}')}٪"
+    return f"   {arrow}{fa(f'{abs(pct):.2f}')}٪"
+
+
+def short_toman(t: float) -> str:
+    """۸,۸۱۰,۰۰۰ → ۸.۸ میلیون"""
+    a = abs(t)
+    if a >= 1_000_000:
+        txt = f"{fa(f'{a / 1_000_000:.1f}'.rstrip('0').rstrip('.'))} میلیون"
+    elif a >= 1_000:
+        txt = f"{fa(round(a / 1_000))} هزار"
+    else:
+        txt = fa(round(a))
+    return txt
+
+
+def pick(data: dict, key: str):
+    c = CATALOG[key]
+    return next((data[s] for s in c["src"] if s in data and data[s][0]), None)
+
+
+def bubble_lines(data: dict, items: list[str]) -> list[str]:
+    oz, usd = pick(data, "gold_oz"), pick(data, "usd")
+    if not (oz and usd):
+        return []
+    gram_toman = oz[0] / OUNCE_G * usd[0] * R2T  # ارزش هر گرم طلای خالص
+    out = []
+    for key, title, pure_g in BUBBLE:
+        v = pick(data, key)
+        if key not in items or not v:
+            continue
+        market = v[0] * R2T
+        bubble = market - pure_g * gram_toman
+        pct = bubble / (market - bubble) * 100
+        sign = "منفی " if bubble < 0 else ""
+        out.append(f"▫️ {title}: {sign}{short_toman(bubble)} تومان  ({fa(f'{abs(pct):.1f}')}٪)")
+    return out
 
 
 def build_post(items: list[str], data: dict, header: str, footer: str) -> str | None:
-    lines = [header, f"🗓 {persian_now()}", ""]
-    found = 0
+    sections: dict = {g: [] for g, _ in GROUPS}
     for it in items:
         c = CATALOG[it]
-        val = next((data[s] for s in c["src"] if s in data and data[s][0]), None)
+        val = pick(data, it)
         if val is None:
             log.warning("قیمت «%s» پیدا نشد", c["title"])
             continue
         price, pct = val
-        found += 1
-        lines.append(f"{c['emoji']} {c['title']}: {fmt_num(price * c['mul'], c['dec'])} "
-                     f"{c['unit']}{change_badge(pct)}")
-    if not found:
+        sections[c["group"]].append(
+            f"▫️ {c['title']}: {fmt_num(price * c['mul'], c['dec'])}{change_badge(pct)}")
+    if not any(sections.values()):
         return None
+    if env("SHOW_BUBBLE", "1") != "0":
+        sections["bubble"] = bubble_lines(data, items)
+
+    lines = [header, f"🗓 {persian_now()}"]
+    for g, title in GROUPS:
+        if sections[g]:
+            lines += ["", title, *sections[g]]
     if footer:
         lines += ["", footer]
     return "\n".join(lines)
