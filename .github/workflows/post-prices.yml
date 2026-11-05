@@ -47,10 +47,12 @@ jobs:
           case "${{ inputs.mode || 'post' }}" in
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
-            probe)      for u in \
-                          "https://www.tgju.org/profile/ime_fund_ayar" \
-                          "https://www.tgju.org/gold-funds" \
-                          "https://www.tgju.org/ime-funds" ; do
-                          echo "== $u"; curl -gsS -m 20 -A "Mozilla/5.0" "$u" -o /tmp/o || true; echo "size $(wc -c </tmp/o)"; head -c 600 /tmp/o | tr '\n' ' '; echo; grep -oE ".{0,120}(NAV|ناو|حباب|ارزش خالص).{0,160}" /tmp/o | head -8; done ;;
+            probe)      curl -gsS -m 30 -A "Mozilla/5.0" "https://www.tgju.org/gold-funds" -o /tmp/o || true
+                        python3 -c "
+          import re; h=open('/tmp/o',encoding='utf-8').read()
+          i=h.find('data-sort=\"ارزش ریالی خالص دارایی'); print(h[i-3000:i+500])
+          rows=re.findall(r'<tr[^>]*>.*?</tr>', h[i:], re.S)
+          for r in rows[:4]: print('ROW', re.sub(r'\s+',' ',r)[:2500])
+          print('NROWS', len(rows))" ;;
             *)          python bot.py --once ;;
           esac
