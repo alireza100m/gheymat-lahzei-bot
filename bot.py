@@ -927,6 +927,8 @@ def main() -> None:
                     help="ساخت نمونه‌ی یک نوع پست بدون ارسال (تصویرها کنار bot.py ذخیره می‌شوند)")
     ap.add_argument("--sample", action="store_true",
                     help="از هر نوع پست یک نمونه فقط به تلگرام بفرستد")
+    ap.add_argument("--delete-telegram", metavar="A-B",
+                    help="پاک کردن پیام‌های شماره‌ی A تا B از کانال تلگرام")
     ap.add_argument("--check", action="store_true",
                     help="نمایش همه‌ی کلیدهای دریافتی از منابع برای عیب‌یابی")
     ap.add_argument("--bale-chats", action="store_true",
@@ -946,6 +948,16 @@ def main() -> None:
 
     if a.sample:
         return send_samples()
+    if a.delete_telegram:
+        lo, hi = (int(x) for x in a.delete_telegram.split("-"))
+        t = next(t for t in targets() if t.kind == "telegram")
+        for mid in range(lo, hi + 1):
+            try:
+                t._call("deleteMessage", {"chat_id": t.chat, "message_id": mid})
+                log.info("پیام %d پاک شد", mid)
+            except Exception as e:
+                log.warning("پیام %d: %s", mid, e)
+        return
     if a.preview or a.dry_run:
         st = load_state() if a.preview in ("summary", "chart") else {
             "live": {}, "samples": [], "hourly": {}, "alerts": {}, "marks": {}}

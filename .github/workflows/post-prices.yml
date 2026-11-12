@@ -13,7 +13,10 @@ on:
         description: "loop = اجرای عادی، preview = ساخت نمونه‌ی پست‌ها بدون ارسال، sample = ارسال نمونه‌ی همه‌ی پست‌ها فقط به تلگرام، check = بررسی منابع، bale-chats = شناسه‌ی کانال بله"
         default: loop
         type: choice
-        options: [loop, preview, sample, check, bale-chats]
+        options: [loop, preview, sample, check, bale-chats, delete-telegram]
+      ids:
+        description: "برای delete-telegram: بازه‌ی شماره‌ی پیام‌ها، مثلاً 206-211"
+        default: ""
 
 concurrency:
   # فقط اجرای عادی صف می‌شود؛ preview و check منتظر آن نمی‌مانند
@@ -69,6 +72,7 @@ jobs:
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
             sample)     python bot.py --sample ;;
+            delete-telegram) python bot.py --delete-telegram "${{ inputs.ids }}" ;;
             preview)    for k in live text card summary chart alert; do
                           echo "════ $k ════"; python bot.py --preview $k || true
                         done ;;
