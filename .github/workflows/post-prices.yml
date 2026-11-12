@@ -1,25 +1,32 @@
 name: Post prices
 
+# ربات در هر اجرا حدود ۵ ساعت و نیم روشن می‌ماند و هر ۱۰ دقیقه یک دور کار می‌کند
+# (زمان‌بندی خود گیت‌هاب دقیق نیست و اجراهای ۱۰ دقیقه‌ای را با تأخیر زیاد می‌زند).
+# زمان‌بندی زیر فقط مطمئن می‌شود همیشه یک اجرای بعدی در صف هست تا
+# بلافاصله بعد از تمام شدن اجرای قبلی شروع شود.
 on:
   schedule:
-    # هر ۱۰ دقیقه (حداقل مجاز گیت‌هاب ۵ دقیقه است). زمان‌ها به UTC هستند.
-    - cron: "*/10 * * * *"
-  workflow_dispatch:      # دکمه‌ی Run workflow برای تست دستی
+    - cron: "17,47 * * * *"
+  workflow_dispatch:      # دکمه‌ی Run workflow
     inputs:
       mode:
-        description: "post = ارسال پست، bale-chats = پیدا کردن شناسه‌ی کانال بله، check = بررسی منابع"
-        default: post
+        description: "loop = اجرای عادی، preview = ساخت نمونه‌ی پست‌ها بدون ارسال، check = بررسی منابع، bale-chats = شناسه‌ی کانال بله"
+        default: loop
         type: choice
-        options: [post, bale-chats, check, probe]
+        options: [loop, preview, check, bale-chats]
 
 concurrency:
-  group: post-prices
+  # فقط اجرای عادی صف می‌شود؛ preview و check منتظر آن نمی‌مانند
+  group: post-prices-${{ inputs.mode || 'loop' }}
   cancel-in-progress: false
+
+permissions:
+  contents: write   # برای ذخیره‌ی وضعیت روی شاخه‌ی bot-state
 
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,7 +34,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Post to channels
+      - name: Run bot
         env:
           BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
           BALE_CHAT_ID: ${{ secrets.BALE_CHAT_ID }}
@@ -35,26 +42,40 @@ jobs:
           EITAA_CHAT_ID: ${{ secrets.EITAA_CHAT_ID }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # تنظیمات اختیاری از تب Variables مخزن
+          # تنظیمات اختیاری از تب Variables مخزن (توضیح همه در README)
           ITEMS: ${{ vars.ITEMS }}
           HEADER: ${{ vars.HEADER }}
           FOOTER: ${{ vars.FOOTER }}
           TELEGRAM_FOOTER: ${{ vars.TELEGRAM_FOOTER }}
           QUIET_HOURS: ${{ vars.QUIET_HOURS }}
+          NIGHT_HOURS: ${{ vars.NIGHT_HOURS }}
+          NIGHT_EVERY: ${{ vars.NIGHT_EVERY }}
+          IMAGE_HOURS: ${{ vars.IMAGE_HOURS }}
+          SUMMARY_HOUR: ${{ vars.SUMMARY_HOUR }}
+          CHART_HOUR: ${{ vars.CHART_HOUR }}
+          ALERT_PCT: ${{ vars.ALERT_PCT }}
+          ALERT_ITEMS: ${{ vars.ALERT_ITEMS }}
+          LIVE_MESSAGE: ${{ vars.LIVE_MESSAGE }}
+          EITAA_PIN: ${{ vars.EITAA_PIN }}
+          STATE_BRANCH: bot-state
+          GIT_AUTHOR_NAME: price-bot
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: price-bot
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           # سرورهای گیت‌هاب خارج از ایران‌اند و نوبیتکس به آن‌ها جواب نمی‌دهد
           DISABLED_SOURCES: nobitex
         run: |
-          case "${{ inputs.mode || 'post' }}" in
+          case "${{ inputs.mode || 'loop' }}" in
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
-            probe)      curl -gsS -m 30 -A "Mozilla/5.0" "https://www.tgju.org/gold-funds/2/%D8%A2%D8%AA%D8%B4" -o /tmp/o || true
-                        python3 -c "
-          import re; h=open('/tmp/o',encoding='utf-8').read(); print('SIZE',len(h))
-          clean=lambda x: re.sub(r'\s+',' ',re.sub(r'<script.*?</script>|<style.*?</style>|<[^>]+>',' ',x,flags=re.S)).strip()
-          txt=clean(h)
-          for k in ['ابطال','صدور','حباب','NAV','هر واحد','قیمت پایانی','آخرین معامله']:
-              for m in re.finditer(k, txt):
-                  print('HIT', k, '|', txt[max(0,m.start()-150):m.end()+150]); break
-          print('API', set(re.findall(r'https?://[^\"\' ]*(?:api|ajax|json)[^\"\' ]*', h))[:0] if False else sorted(set(re.findall(r'https?://[^\"\' <>]*(?:api|ajax|json)[^\"\' <>]*', h)))[:20])" ;;
-            *)          python bot.py --once ;;
+            preview)    for k in live text card summary chart alert; do
+                          echo "════ $k ════"; python bot.py --preview $k || true
+                        done ;;
+            *)          python bot.py --loop 330 ;;
           esac
+      - name: Upload preview images
+        if: inputs.mode == 'preview'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: preview-*.png
