@@ -10,10 +10,10 @@ on:
   workflow_dispatch:      # دکمه‌ی Run workflow
     inputs:
       mode:
-        description: "loop = اجرای عادی، preview = ساخت نمونه‌ی پست‌ها بدون ارسال، check = بررسی منابع، bale-chats = شناسه‌ی کانال بله"
+        description: "loop = اجرای عادی، preview = ساخت نمونه‌ی پست‌ها بدون ارسال، sample = ارسال نمونه‌ی همه‌ی پست‌ها فقط به تلگرام، check = بررسی منابع، bale-chats = شناسه‌ی کانال بله"
         default: loop
         type: choice
-        options: [loop, preview, check, bale-chats]
+        options: [loop, preview, sample, check, bale-chats]
 
 concurrency:
   # فقط اجرای عادی صف می‌شود؛ preview و check منتظر آن نمی‌مانند
@@ -68,6 +68,7 @@ jobs:
           case "${{ inputs.mode || 'loop' }}" in
             bale-chats) python bot.py --bale-chats ;;
             check)      python bot.py --check ;;
+            sample)     python bot.py --sample ;;
             preview)    for k in live text card summary chart alert; do
                           echo "════ $k ════"; python bot.py --preview $k || true
                         done ;;

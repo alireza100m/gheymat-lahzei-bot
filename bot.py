@@ -856,6 +856,64 @@ def tick(st: dict, dry: bool = False, force: str | None = None) -> None:
         st["marks"]["post"] = now.strftime("%Y-%m-%d %H")
 
 
+# ───────────────────────── نمونه برای تلگرام ─────────────────────────
+
+def send_samples() -> None:
+    """از هر نوع پست یک نمونه فقط به تلگرام می‌فرستد (برای دیدن ظاهر).
+    خلاصه، نمودار و هشدار با داده‌ی نمایشی ساخته می‌شوند و این در متن آمده است."""
+    import random
+    tg = [t for t in targets() if t.kind == "telegram"]
+    if not tg:
+        sys.exit("تلگرام تنظیم نشده")
+    t = tg[0]
+    items = selected_items()
+    data = collect_prices(items)
+    vals = values_of(items, data)
+    now_ts, now = time.time(), datetime.now(TEHRAN)
+    tag = B0 + "🧪 نمونه‌ی آزمایشی" + B1 + "\n"
+    demo = "\n(داده‌ی نمایشی برای دیدن ظاهر؛ قیمت واقعی نیست)"
+    header = env("HEADER", "📊 قیمت لحظه‌ای بازار")
+    rnd = random.Random(7)
+
+    def send(text):
+        retry(lambda: t.send_text(tag + text), "ارسال نمونه")
+
+    # ۱) پیام پین‌شده‌ی زنده
+    note = f"🔄 به‌روزرسانی خودکار هر {fa(env('INTERVAL_MINUTES', '10'))} دقیقه"
+    send(build_post(items, data, "📌 " + header.lstrip("📊 "), note))
+    # ۲) پست ساعتی
+    send(build_post(items, data, header))
+    # ۳) کارت تصویری
+    png = make_card(items, data, t.footer)
+    if png:
+        retry(lambda: t.send_photo(png, tag + "کارت تصویری قیمت‌ها\n\n" + FOOT), "ارسال کارت")
+    # ۴) خلاصه‌ی روز با داده‌ی نمایشی
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    fake = {"samples": [[start + 60, {k: v * (1 + rnd.uniform(-0.02, 0.02)) for k, v in vals.items()}],
+                        [start + 120, vals], [start + 180, vals]]}
+    s = build_summary(fake, now, items, vals)
+    if s:
+        send(s.replace("\n\n" + FOOT, demo + "\n\n" + FOOT))
+    # ۵) نمودار هفتگی با داده‌ی نمایشی
+    hourly = {}
+    for k in ("gold18", "usd"):
+        if k in vals:
+            v, ser = vals[k], []
+            for i in range(7 * 24):
+                ser.append([now_ts - i * 3600, v])
+                v /= 1 + rnd.gauss(0.0003, 0.003)
+            hourly[k] = ser[::-1]
+    png = make_chart({"hourly": hourly}, t.footer)
+    if png:
+        cap = "\n".join([tag + "📈 نمودار هفتگی طلا و دلار" + demo, "", FOOT])
+        retry(lambda: t.send_photo(png, cap), "ارسال نمودار")
+    # ۶) هشدار نوسان با داده‌ی نمایشی
+    st = {"samples": [[now_ts - 3000, {k: v / 1.013 for k, v in vals.items()}]], "alerts": {}}
+    for a in check_alerts(st, now_ts, vals)[:1]:
+        send(a.replace("\n\n" + FOOT, demo + "\n\n" + FOOT))
+    log.info("نمونه‌ها به تلگرام فرستاده شد")
+
+
 # ───────────────────────── اجرا ─────────────────────────
 
 def main() -> None:
@@ -867,6 +925,8 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="فقط نمایش متن، بدون ارسال")
     ap.add_argument("--preview", choices=["live", "text", "card", "summary", "chart", "alert"],
                     help="ساخت نمونه‌ی یک نوع پست بدون ارسال (تصویرها کنار bot.py ذخیره می‌شوند)")
+    ap.add_argument("--sample", action="store_true",
+                    help="از هر نوع پست یک نمونه فقط به تلگرام بفرستد")
     ap.add_argument("--check", action="store_true",
                     help="نمایش همه‌ی کلیدهای دریافتی از منابع برای عیب‌یابی")
     ap.add_argument("--bale-chats", action="store_true",
@@ -884,6 +944,8 @@ def main() -> None:
         return
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    if a.sample:
+        return send_samples()
     if a.preview or a.dry_run:
         st = load_state() if a.preview in ("summary", "chart") else {
             "live": {}, "samples": [], "hourly": {}, "alerts": {}, "marks": {}}
